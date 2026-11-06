@@ -45,11 +45,13 @@ var CONFIG = {
   logEventSheet: "event-log",
   metaSheet: "Meta",
   geminiApiKeyProperty: "GEMINI_API_KEY", // Fixed to match your script property name
-  domjudgeApiUrl: "https://judge.csbasics.in/api/v4",
-  domjudgeContestId: "2",
-  domjudgeTeamId: "5",
-  domjudgeUser: "Student01",
-  domjudgePass: "Ppassword@123",
+  // DOMjudge connection details are deliberately read from Script Properties.
+  // Never put test or production credentials in this repository.
+  domjudgeApiUrl: "",
+  domjudgeContestId: "",
+  domjudgeTeamId: "",
+  domjudgeUser: "",
+  domjudgePass: "",
   // gemini-2.5-pro is retired for this project. Keep this default aligned
   // with the runtime configuration in geminiConfig.js.
   geminiModel: "gemini-3.1-pro-preview",
@@ -68,8 +70,8 @@ var CONFIG = {
   logErrorString: "ERROR",
   // Gemini response defaults
   defaultFinishReason: "STOP",
-  domjudgeAdminUser: "shanti",
-  domjudgeAdminPass: "shanti@justuju.in",
+  domjudgeAdminUser: "",
+  domjudgeAdminPass: "",
   // DomJudge submission configuration
   domjudgeLanguageId: "python3",
   domjudgeSolutionFilename: "solution.py",
@@ -108,5 +110,28 @@ var CONFIG = {
 };
 
 function getConfig() {
-  return CONFIG;
+  var config = Object.assign({}, CONFIG);
+  var properties = PropertiesService.getScriptProperties().getProperties();
+  var propertyMap = {
+    DOMJUDGE_BASE_URL: "domjudgeApiUrl",
+    DOMJUDGE_CONTEST_ID: "domjudgeContestId",
+    DOMJUDGE_TEAM_ID: "domjudgeTeamId",
+    DOMJUDGE_USERNAME: "domjudgeUser",
+    DOMJUDGE_PASSWORD: "domjudgePass",
+    DOMJUDGE_ADMIN_USERNAME: "domjudgeAdminUser",
+    DOMJUDGE_ADMIN_PASSWORD: "domjudgeAdminPass",
+    DOMJUDGE_LANGUAGE_ID: "domjudgeLanguageId"
+  };
+
+  Object.keys(propertyMap).forEach(function(propertyName) {
+    if (properties[propertyName] !== undefined && properties[propertyName] !== "") {
+      config[propertyMap[propertyName]] = properties[propertyName];
+    }
+  });
+
+  config.domjudgeApiUrl = String(config.domjudgeApiUrl || "").replace(/\/+$/, "");
+  // A separate admin account is optional for the copied test environment.
+  config.domjudgeAdminUser = config.domjudgeAdminUser || config.domjudgeUser;
+  config.domjudgeAdminPass = config.domjudgeAdminPass || config.domjudgePass;
+  return config;
 }

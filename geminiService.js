@@ -313,6 +313,7 @@ function processGeminiImageRequest(fileId, promptText, temperature = 0) {
  */
 function findEligibleRows(sheet, data) {
   const eligibleRows = [];
+  const copiedFormSubmissionKeys = getCopiedFormSubmissionKeys_(sheet.getParent());
   
   for (let i = 1; i < data.length; i++) {
     const status = getValueFromDataByColumnName(
@@ -323,7 +324,8 @@ function findEligibleRows(sheet, data) {
       data, i, sheet, getConfig().UploadFlowchartColumnName
     );
     
-    if (status === getConfig().NewEntryStatus && flowchartUrl) {
+    if (status === getConfig().NewEntryStatus && flowchartUrl &&
+        isCopiedFormSubmission_(sheet, data, i, copiedFormSubmissionKeys)) {
       eligibleRows.push(i);
     }
   }
@@ -451,9 +453,11 @@ function getRowsToEnqueue(master, cfg, maxRows) {
   const idxFlowchartURL = col(cfg.UploadFlowchartColumnName);
   const rows = [];
   const values = master.getDataRange().getValues();
+  const copiedFormSubmissionKeys = getCopiedFormSubmissionKeys_(master.getParent());
   for (let r = 1; r < values.length; r++) {
     const row = values[r];
-    if (row[idxStatus] === cfg.NewEntryStatus && row[idxFlowchartURL]) {
+    if (row[idxStatus] === cfg.NewEntryStatus && row[idxFlowchartURL] &&
+        isCopiedFormSubmission_(master, values, r, copiedFormSubmissionKeys)) {
       rows.push({ r, row });
       if (maxRows && rows.length >= maxRows) break;
     }

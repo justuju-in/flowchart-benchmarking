@@ -8,6 +8,10 @@
  * Call this function once at the beginning of your script execution.
  */
 function initBatchModeConfig() {
+  // Files are evaluated in an unspecified order. geminiConfig.js performs
+  // the active initialization after CONFIG exists, so an early archive load
+  // must be a no-op rather than emitting a misleading startup error.
+  if (typeof CONFIG === "undefined" || !CONFIG) return false;
   // Add batch mode configuration to the main CONFIG object
   CONFIG.GeminiQueuedStatus = "GEMINI_QUEUED";
   CONFIG.BatchesFolderName = "GeminiBatches";
@@ -18,7 +22,7 @@ function initBatchModeConfig() {
   CONFIG.geminiEndpointBase = "https://generativelanguage.googleapis.com";
   
   // Log the initialization
-  logEvent("Batch mode configuration initialized", CONFIG.logLevelDebug);
+  return true;
 }
 
 // Initialize batch mode config when this script is loaded
@@ -26,7 +30,6 @@ function initBatchModeConfig() {
   try {
     initBatchModeConfig();
   } catch (e) {
-    // Silent initialization - errors will be caught later when functions are called
-    console.log("Error initializing batch mode config:", e);
+    // The active configuration is initialized by geminiConfig.js.
   }
 })();

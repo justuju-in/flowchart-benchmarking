@@ -37,9 +37,9 @@ function createDomjudgeJudgementsUrl(baseUrl, contestId, submissionId) {
  * 
  * @returns {Object} Headers with student authorization
  */
-function createDomjudgeStudentAuthHeaders() {
-  const username = getConfig().domjudgeUser;
-  const password = getConfig().domjudgePass;
+function createDomjudgeStudentAuthHeaders(config) {
+  const username = config.domjudgeUser;
+  const password = config.domjudgePass;
   return createBasicAuthHeaders(username, password);
 }
 
@@ -48,10 +48,27 @@ function createDomjudgeStudentAuthHeaders() {
  * 
  * @returns {Object} Headers with admin authorization
  */
-function createDomjudgeAdminAuthHeaders() {
-  const username = getConfig().domjudgeAdminUser;
-  const password = getConfig().domjudgeAdminPass;
+function createDomjudgeAdminAuthHeaders(config) {
+  const username = config.domjudgeAdminUser;
+  const password = config.domjudgeAdminPass;
   return createBasicAuthHeaders(username, password);
+}
+
+/** Ensures this copied script cannot call a judge until configured safely. */
+function getConfiguredDomjudge_() {
+  const config = getConfig();
+  const missing = [
+    ["DOMJUDGE_BASE_URL", config.domjudgeApiUrl],
+    ["DOMJUDGE_CONTEST_ID", config.domjudgeContestId],
+    ["DOMJUDGE_USERNAME", config.domjudgeUser],
+    ["DOMJUDGE_PASSWORD", config.domjudgePass]
+  ].filter(function(entry) { return !entry[1]; })
+    .map(function(entry) { return entry[0]; });
+
+  if (missing.length) {
+    throw new Error("Set copied-test Script Properties before using DOMjudge: " + missing.join(", "));
+  }
+  return config;
 }
 
 /**
@@ -63,15 +80,16 @@ function createDomjudgeAdminAuthHeaders() {
  */
 function submitToDomjudge(code, problemId) {
   // Get configuration values
-  const contestId = getConfig().domjudgeContestId;
-  const languageId = getConfig().domjudgeLanguageId;
-  const filename = getConfig().domjudgeSolutionFilename;
-  const teamId = getConfig().domjudgeTeamId;
-  const domjudgeUrl = getConfig().domjudgeApiUrl;
+  const config = getConfiguredDomjudge_();
+  const contestId = config.domjudgeContestId;
+  const languageId = config.domjudgeLanguageId;
+  const filename = config.domjudgeSolutionFilename;
+  const teamId = config.domjudgeTeamId;
+  const domjudgeUrl = config.domjudgeApiUrl;
   
   // Prepare file for submission
   const codeBlob = Utilities.newBlob(code, 'text/x-python', filename);
-  const zipBlob = Utilities.zip([codeBlob], getConfig().domjudgeZipFilename);
+  const zipBlob = Utilities.zip([codeBlob], config.domjudgeZipFilename);
   const encodedZip = Utilities.base64Encode(zipBlob.getBytes());
   
   // Create submission URL
@@ -87,14 +105,15 @@ function submitToDomjudge(code, problemId) {
     team_id: teamId,
     files: [
       {
-        filename: getConfig().domjudgeZipFilename,
+        filename: config.domjudgeZipFilename,
         data: encodedZip,
       },
     ],
   };
+  if (teamId) payload.team_id = teamId;
   
   // Create request headers and options
-  const headers = createDomjudgeStudentAuthHeaders();
+  const headers = createDomjudgeStudentAuthHeaders(config);
   const options = createPostRequestOptions(headers, payload);
   
   // Make the API call using the centralized utility

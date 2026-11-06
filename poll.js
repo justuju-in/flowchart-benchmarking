@@ -15,8 +15,9 @@
  * @returns {string|null} The verdict if available, or null if still pending.
  */
 function pollJudgement(submissionId) {
-  const contestId = getConfig().domjudgeContestId;
-  const domjudgeUrl = getConfig().domjudgeApiUrl;
+  const config = getConfiguredDomjudge_();
+  const contestId = config.domjudgeContestId;
+  const domjudgeUrl = config.domjudgeApiUrl;
   
   // Create the judgements URL using the utility function
   const url = createDomjudgeJudgementsUrl(domjudgeUrl, contestId, submissionId);
@@ -25,7 +26,7 @@ function pollJudgement(submissionId) {
   logEvent("Polling judgements for submission. URL: " + url, getConfig().logLevelDebug);
   
   // Create headers using admin credentials for better access
-  const headers = createDomjudgeAdminAuthHeaders();
+  const headers = createDomjudgeAdminAuthHeaders(config);
   
   // Create request options using utility
   const options = createGetRequestOptions(headers);

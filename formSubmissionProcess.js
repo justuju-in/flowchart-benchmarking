@@ -74,6 +74,50 @@ function installFormSubmissionTrigger() {
 }
 
 /**
+ * Installs the recurring pipeline for the copied test system.
+ *
+ * This deliberately does not run during deployment. After the copied script's
+ * Script Properties have been set and one end-to-end test succeeds, run this
+ * function once. It is idempotent and never creates duplicate timers.
+ */
+function installCopiedFormPipelineTrigger() {
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (!spreadsheet) {
+    throw new Error("Open the copied test spreadsheet before installing the pipeline trigger.");
+  }
+  if (!getGeminiApiKey()) {
+    throw new Error("Set GEMINI_API_KEY in copied-test Script Properties first.");
+  }
+  getConfiguredDomjudge_();
+
+  var handlerName = "runCopiedFormPipeline";
+  var exists = ScriptApp.getProjectTriggers().some(function(trigger) {
+    return trigger.getHandlerFunction() === handlerName;
+  });
+  if (exists) return "Copied-form pipeline trigger is already installed.";
+
+  ScriptApp.newTrigger(handlerName)
+    .timeBased()
+    .everyMinutes(5)
+    .create();
+  return "Copied-form pipeline trigger installed; it runs every 5 minutes.";
+}
+
+/** Runs the copied-form pipeline. Historical Master rows are filtered out. */
+function runCopiedFormPipeline() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) return "Another copied-form pipeline run is active.";
+  try {
+    processGemini();
+    triggerDomJudgeProcessing();
+    triggerVerdictPolling();
+    return "Copied-form pipeline completed.";
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
  * Extracts submission data from a form submission.
  * @param {Object} e - The form submission event.
  * @return {Object} - The extracted submission data.
