@@ -47,7 +47,9 @@ var CONFIG = {
   domjudgeTeamId: "5",
   domjudgeUser: "Student01",
   domjudgePass: "Ppassword@123",
-  geminiModel: "gemini-2.5-pro",
+  // gemini-2.5-pro is retired for this project. Keep this default aligned
+  // with the runtime configuration in geminiConfig.js.
+  geminiModel: "gemini-3.1-pro-preview",
   geminiTemperature: 0,
   CannotProcessStatus: "CANNOT_PROCESS",
   // Use base endpoint for Gemini API with models path

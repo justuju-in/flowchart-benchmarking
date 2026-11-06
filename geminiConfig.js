@@ -10,7 +10,9 @@
 function initGeminiConfig() {
   // Add Gemini API configuration
   CONFIG.geminiApiKeyProperty = "GEMINI_API_KEY";
-  CONFIG.geminiModel = "gemini-2.5-pro";
+  // The previous gemini-2.5-pro model is no longer available to this
+  // project. This is the model recommended by the Gemini API response.
+  CONFIG.geminiModel = "gemini-3.1-pro-preview";
   CONFIG.geminiTemperature = 0;
   CONFIG.geminiEndpoint = "https://generativelanguage.googleapis.com/v1beta/models/";
   
