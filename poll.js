@@ -14,9 +14,15 @@
  * @param {string} submissionId - The ID of the submission to check.
  * @returns {string|null} The verdict if available, or null if still pending.
  */
-function pollJudgement(submissionId) {
+function pollJudgement(submissionId, problemId) {
   const config = getConfiguredDomjudge_();
-  const contestId = config.domjudgeContestId;
+  let contestId;
+  try {
+    contestId = getDomjudgeContestForProblem_(problemId, config);
+  } catch (error) {
+    logEvent("DomJudge contest routing error while polling: " + error.message, getConfig().logLevelError);
+    return null;
+  }
   const domjudgeUrl = config.domjudgeApiUrl;
   
   // Create the judgements URL using the utility function
@@ -69,7 +75,15 @@ function pollVerdictForSubmission(sheet, data, rowIndex) {
   }
   
   // Poll for verdict
-  var result = pollJudgement(submissionId);
+  var problemNumber = getSheetValueByColumnName(data, rowIndex, sheet, getConfig().ProblemNumberColumnName);
+  var problemCode = String(problemNumber).split(" ")[0].trim();
+  var problemId = getProblemIdFromMeta(problemCode);
+  if (problemId === null || problemId === undefined) {
+    logEvent("Cannot poll submission " + submissionId + ": problem " + problemCode + " is missing from Meta", getConfig().logLevelError);
+    return false;
+  }
+
+  var result = pollJudgement(submissionId, problemId);
   if (!result) {
     return false;
   }

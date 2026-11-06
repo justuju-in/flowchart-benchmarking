@@ -49,6 +49,9 @@ var CONFIG = {
   // Never put test or production credentials in this repository.
   domjudgeApiUrl: "",
   domjudgeContestId: "",
+  // Comma-separated test contest IDs. A submission is routed to the contest
+  // that actually contains its DOMjudge problem ID.
+  domjudgeContestIds: "",
   domjudgeTeamId: "",
   domjudgeUser: "",
   domjudgePass: "",
@@ -115,6 +118,7 @@ function getConfig() {
   var propertyMap = {
     DOMJUDGE_BASE_URL: "domjudgeApiUrl",
     DOMJUDGE_CONTEST_ID: "domjudgeContestId",
+    DOMJUDGE_CONTEST_IDS: "domjudgeContestIds",
     DOMJUDGE_TEAM_ID: "domjudgeTeamId",
     DOMJUDGE_USERNAME: "domjudgeUser",
     DOMJUDGE_PASSWORD: "domjudgePass",
