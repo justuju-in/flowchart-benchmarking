@@ -39,6 +39,9 @@ var CONFIG = {
   SubmissionStatus: "SUBMITTED",
   generatedCodesFolder: "GeneratedCodes",
   masterSheet: "Master",
+  // Only submissions originating from this response tab are allowed to reach
+  // the test DOMjudge workflow. This keeps copied historical Master rows safe.
+  sourceResponseSheet: "Form Responses 4",
   logEventSheet: "event-log",
   metaSheet: "Meta",
   geminiApiKeyProperty: "GEMINI_API_KEY", // Fixed to match your script property name

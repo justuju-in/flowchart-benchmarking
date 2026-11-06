@@ -102,12 +102,62 @@ function triggerDomJudgeProcessing() {
   );
   // Get all sheet data using helper function
   var data = getSheetData(masterSheet);
+  var copiedFormSubmissionKeys = getCopiedFormSubmissionKeys_(masterSheet.getParent());
   
   for (var i = 1; i < data.length; i++) {
     var status = getSheetValueByColumnName(data, i, masterSheet, getConfig().StatusColumnName);
     
-    if (status === getConfig().GeminiDoneStatus) {
+    if (status === getConfig().GeminiDoneStatus &&
+        isCopiedFormSubmission_(masterSheet, data, i, copiedFormSubmissionKeys)) {
       submitCodeToDomJudge(masterSheet, data, i);
     }
   }
+}
+
+/**
+ * Builds stable identity keys for all responses received through the copied
+ * form. Historical rows imported into Master are deliberately not included.
+ *
+ * @param {Spreadsheet} spreadsheet The bound test spreadsheet.
+ * @return {Object<string, boolean>} Form-response identity keys.
+ */
+function getCopiedFormSubmissionKeys_(spreadsheet) {
+  var responseSheet = spreadsheet.getSheetByName(getConfig().sourceResponseSheet);
+  if (!responseSheet || responseSheet.getLastRow() < 2) {
+    return {};
+  }
+
+  var rows = responseSheet.getDataRange().getDisplayValues();
+  var headers = rows[0];
+  var emailIndex = headers.indexOf("Email Address");
+  var problemIndex = headers.indexOf("Print User Input");
+  var uploadIndex = headers.indexOf("Please upload image");
+  if (uploadIndex < 0) uploadIndex = headers.indexOf("Upload your Flowchart");
+  if (emailIndex < 0 || problemIndex < 0 || uploadIndex < 0) {
+    throw new Error("The copied form response sheet is missing required columns.");
+  }
+
+  return rows.slice(1).reduce(function(keys, row) {
+    var key = copiedFormSubmissionKey_(row[emailIndex], row[problemIndex], row[uploadIndex]);
+    if (key) keys[key] = true;
+    return keys;
+  }, {});
+}
+
+/**
+ * Checks that a Master row came from the copied form before any test judge
+ * submission is made.
+ */
+function isCopiedFormSubmission_(sheet, data, rowIndex, copiedFormSubmissionKeys) {
+  var email = getSheetValueByColumnName(data, rowIndex, sheet, getConfig().EmailAddressColumnName);
+  var problem = getSheetValueByColumnName(data, rowIndex, sheet, getConfig().ProblemNumberColumnName);
+  var flowchartUrl = getSheetValueByColumnName(data, rowIndex, sheet, getConfig().UploadFlowchartColumnName);
+  var key = copiedFormSubmissionKey_(email, problem, flowchartUrl);
+  return Boolean(key && copiedFormSubmissionKeys[key]);
+}
+
+function copiedFormSubmissionKey_(email, problem, flowchartUrl) {
+  var fileId = getFileIdFromUrl(String(flowchartUrl || ""));
+  if (!email || !problem || !fileId) return "";
+  return [String(email).trim().toLowerCase(), String(problem).trim(), fileId].join("|");
 }
