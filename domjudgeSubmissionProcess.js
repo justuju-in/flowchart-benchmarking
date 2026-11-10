@@ -227,5 +227,12 @@ function isCopiedFormSubmission_(sheet, data, rowIndex, copiedFormSubmissionKeys
 function copiedFormSubmissionKey_(email, problem, flowchartUrl) {
   var fileId = getFileIdFromUrl(String(flowchartUrl || ""));
   if (!email || !problem || !fileId) return "";
-  return [String(email).trim().toLowerCase(), String(problem).trim(), fileId].join("|");
+  // Form labels and problem titles can be edited independently. The FCP code
+  // is the stable identity; retain the file ID so old Master history cannot
+  // be mistaken for a response from the copied form.
+  var codeMatch = String(problem).match(/\bFCP\d{3}\b/i);
+  var problemIdentity = codeMatch
+    ? codeMatch[0].toUpperCase()
+    : String(problem).trim().toLowerCase().replace(/\s+/g, " ");
+  return [String(email).trim().toLowerCase(), problemIdentity, fileId].join("|");
 }
