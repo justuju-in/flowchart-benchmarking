@@ -135,9 +135,9 @@ function getCopiedFormSubmissionKeys_(spreadsheet) {
 
   var rows = responseSheet.getDataRange().getDisplayValues();
   var headers = rows[0];
-  var emailIndex = findCopiedResponseHeaderIndex_(headers, "email");
-  var problemIndex = findCopiedResponseHeaderIndex_(headers, "problem");
-  var uploadIndex = findCopiedResponseHeaderIndex_(headers, "upload");
+  var emailIndex = findCopiedResponseHeaderIndex_(headers, rows, "email");
+  var problemIndex = findCopiedResponseHeaderIndex_(headers, rows, "problem");
+  var uploadIndex = findCopiedResponseHeaderIndex_(headers, rows, "upload");
   if (emailIndex < 0 || problemIndex < 0 || uploadIndex < 0) {
     throw new Error(
       "The copied form response sheet is missing an email, problem, or flowchart-upload column. " +
@@ -156,7 +156,7 @@ function getCopiedFormSubmissionKeys_(spreadsheet) {
  * Locates the copied Google Form columns even if its question label has been
  * edited. This keeps the copied test workflow independent of exact wording.
  */
-function findCopiedResponseHeaderIndex_(headers, kind) {
+function findCopiedResponseHeaderIndex_(headers, rows, kind) {
   var normalised = headers.map(function(header) {
     return String(header || "").trim().toLowerCase().replace(/\s+/g, " ");
   });
@@ -171,7 +171,7 @@ function findCopiedResponseHeaderIndex_(headers, kind) {
     if (exactIndex >= 0) return exactIndex;
   }
 
-  return normalised.findIndex(function(header) {
+  var matchingHeaderIndex = normalised.findIndex(function(header) {
     if (kind === "email") return header.indexOf("email") >= 0;
     if (kind === "problem") {
       return header.indexOf("problem") >= 0 ||
@@ -180,6 +180,33 @@ function findCopiedResponseHeaderIndex_(headers, kind) {
     return header.indexOf("upload") >= 0 &&
       (header.indexOf("flowchart") >= 0 || header.indexOf("image") >= 0);
   });
+  if (matchingHeaderIndex >= 0) return matchingHeaderIndex;
+
+  // Google Forms sometimes creates generic headings such as "Column 2" after
+  // a question is edited. Infer that column from the actual response values.
+  if (kind === "problem") {
+    return findCopiedResponseValueColumn_(rows, /^FCP\d{3}\b/i);
+  }
+  if (kind === "upload") {
+    return findCopiedResponseValueColumn_(rows, /drive\.google\.com|\/file\/d\//i);
+  }
+  return -1;
+}
+
+/** Returns the unique column that contains a value matching the supplied pattern. */
+function findCopiedResponseValueColumn_(rows, pattern) {
+  var candidates = [];
+  var maxRows = Math.min(rows.length, 51);
+  var columnCount = rows[0].length;
+  for (var column = 0; column < columnCount; column++) {
+    for (var row = 1; row < maxRows; row++) {
+      if (pattern.test(String(rows[row][column] || ""))) {
+        candidates.push(column);
+        break;
+      }
+    }
+  }
+  return candidates.length === 1 ? candidates[0] : -1;
 }
 
 /**
