@@ -131,18 +131,41 @@ function extractFormSubmissionEventData_(e) {
     .getRange(e.range.getRow(), 1, 1, responseSheet.getLastColumn())
     .getDisplayValues()[0];
 
-  function valueFor(columnName) {
-    var index = headers.indexOf(columnName);
-    return index >= 0 ? values[index] || "" : "";
+  function valueFor(columnNames, fallbackPattern) {
+    var candidates = Array.isArray(columnNames) ? columnNames : [columnNames];
+    for (var i = 0; i < candidates.length; i++) {
+      var index = headers.indexOf(candidates[i]);
+      if (index >= 0 && values[index]) {
+        return values[index];
+      }
+    }
+
+    if (fallbackPattern) {
+      for (var j = 0; j < values.length; j++) {
+        if (fallbackPattern.test(String(values[j] || ""))) {
+          return values[j];
+        }
+      }
+    }
+    return "";
   }
 
   return {
     timestamp: valueFor("Timestamp"),
     email: valueFor("Email Address"),
-    problemCode: valueFor("Print User Input"),
+    // The copied form's problem field is currently labelled "Column 2".
+    // Keep the original label for backwards compatibility and fall back to
+    // any submitted value containing an FCP code.
+    problemCode: valueFor(
+      ["Print User Input", "Problem Number", "Column 2"],
+      /\bFCP\d{3}\b/i
+    ),
     // Older forms use "Upload your Flowchart"; the copied test form uses
     // "Please upload image". Both map to the same Master column.
-    flowchartUrl: valueFor("Please upload image") || valueFor("Upload your Flowchart")
+    flowchartUrl: valueFor(
+      ["Please upload image", "Upload your Flowchart"],
+      /drive\.google\.com|docs\.google\.com/i
+    )
   };
 }
 
