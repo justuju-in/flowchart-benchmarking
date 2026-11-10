@@ -109,15 +109,18 @@ function triggerDomJudgeProcessing() {
   // Get all sheet data using helper function
   var data = getSheetData(masterSheet);
   var copiedFormSubmissionKeys = getCopiedFormSubmissionKeys_(masterSheet.getParent());
+  var eligibleCount = 0;
   
   for (var i = 1; i < data.length; i++) {
     var status = getSheetValueByColumnName(data, i, masterSheet, getConfig().StatusColumnName);
     
     if (status === getConfig().GeminiDoneStatus &&
         isCopiedFormSubmission_(masterSheet, data, i, copiedFormSubmissionKeys)) {
+      eligibleCount++;
       submitCodeToDomJudge(masterSheet, data, i);
     }
   }
+  console.log("Copied rows eligible for DOMjudge submission: " + eligibleCount);
 }
 
 /**
