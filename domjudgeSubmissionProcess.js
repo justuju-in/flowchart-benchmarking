@@ -57,9 +57,15 @@ function submitCodeToDomJudge(sheet, data, rowIndex) {
     return false;
   }
   
+  // Oldjudge's public API identifies PRE problems by their external code
+  // (for example FCP023), while some installations use the numeric Meta ID.
+  // Resolve this in one place so submission and polling use the same ID.
+  var apiProblemId = getDomjudgeProblemIdentifier_(problemCode, problemId, getConfig());
+  logEvent("Submitting DOMjudge problem identifier: " + apiProblemId, getConfig().logLevelDebug);
+
   // Submit to DomJudge
   var submissionTimestamp = new Date();
-  var submissionId = submitToDomjudge(code, problemId);
+  var submissionId = submitToDomjudge(code, apiProblemId);
   console.log("submission attempt for: " + problemCode + ", result: " + submissionId);
   
   if (!submissionId) {
@@ -129,12 +135,14 @@ function getCopiedFormSubmissionKeys_(spreadsheet) {
 
   var rows = responseSheet.getDataRange().getDisplayValues();
   var headers = rows[0];
-  var emailIndex = headers.indexOf("Email Address");
-  var problemIndex = headers.indexOf("Print User Input");
-  var uploadIndex = headers.indexOf("Please upload image");
-  if (uploadIndex < 0) uploadIndex = headers.indexOf("Upload your Flowchart");
+  var emailIndex = findCopiedResponseHeaderIndex_(headers, "email");
+  var problemIndex = findCopiedResponseHeaderIndex_(headers, "problem");
+  var uploadIndex = findCopiedResponseHeaderIndex_(headers, "upload");
   if (emailIndex < 0 || problemIndex < 0 || uploadIndex < 0) {
-    throw new Error("The copied form response sheet is missing required columns.");
+    throw new Error(
+      "The copied form response sheet is missing an email, problem, or flowchart-upload column. " +
+      "Found headers: " + headers.join(" | ")
+    );
   }
 
   return rows.slice(1).reduce(function(keys, row) {
@@ -142,6 +150,36 @@ function getCopiedFormSubmissionKeys_(spreadsheet) {
     if (key) keys[key] = true;
     return keys;
   }, {});
+}
+
+/**
+ * Locates the copied Google Form columns even if its question label has been
+ * edited. This keeps the copied test workflow independent of exact wording.
+ */
+function findCopiedResponseHeaderIndex_(headers, kind) {
+  var normalised = headers.map(function(header) {
+    return String(header || "").trim().toLowerCase().replace(/\s+/g, " ");
+  });
+  var exact = {
+    email: ["email address", "email"],
+    problem: ["print user input", "problem number", "problem"],
+    upload: ["please upload image", "upload your flowchart", "upload flowchart"]
+  }[kind] || [];
+
+  for (var i = 0; i < exact.length; i++) {
+    var exactIndex = normalised.indexOf(exact[i]);
+    if (exactIndex >= 0) return exactIndex;
+  }
+
+  return normalised.findIndex(function(header) {
+    if (kind === "email") return header.indexOf("email") >= 0;
+    if (kind === "problem") {
+      return header.indexOf("problem") >= 0 ||
+        (header.indexOf("print") >= 0 && header.indexOf("user input") >= 0);
+    }
+    return header.indexOf("upload") >= 0 &&
+      (header.indexOf("flowchart") >= 0 || header.indexOf("image") >= 0);
+  });
 }
 
 /**

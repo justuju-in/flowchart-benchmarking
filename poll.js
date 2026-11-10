@@ -83,7 +83,8 @@ function pollVerdictForSubmission(sheet, data, rowIndex) {
     return false;
   }
 
-  var result = pollJudgement(submissionId, problemId);
+  var apiProblemId = getDomjudgeProblemIdentifier_(problemCode, problemId, getConfig());
+  var result = pollJudgement(submissionId, apiProblemId);
   if (!result) {
     return false;
   }

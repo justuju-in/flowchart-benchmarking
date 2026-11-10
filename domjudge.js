@@ -88,6 +88,22 @@ function getDomjudgeContestIds_(config) {
 }
 
 /**
+ * Returns the problem identifier required by the target DOMjudge API.
+ * Oldjudge's PRE contest exposes public IDs such as FCP023; the legacy
+ * judgededev integration uses the numeric ID stored in Meta. A Script
+ * Property can override auto-detection when another judge has different API
+ * semantics: DOMJUDGE_PROBLEM_ID_FORMAT=code or internal.
+ */
+function getDomjudgeProblemIdentifier_(problemCode, internalId, config) {
+  var requestedFormat = String(config.domjudgeProblemIdFormat || "auto").toLowerCase();
+  if (requestedFormat === "code") return String(problemCode);
+  if (requestedFormat === "internal") return internalId;
+
+  var apiUrl = String(config.domjudgeApiUrl || "").toLowerCase();
+  return apiUrl.indexOf("oldjudge.csbasics.in") >= 0 ? String(problemCode) : internalId;
+}
+
+/**
  * Finds the configured contest that contains a DOMjudge problem ID.
  * This avoids a fragile manual FCP-to-category mapping in the copied system.
  */

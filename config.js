@@ -52,6 +52,10 @@ var CONFIG = {
   // Comma-separated test contest IDs. A submission is routed to the contest
   // that actually contains its DOMjudge problem ID.
   domjudgeContestIds: "",
+  // "auto" uses FCP codes for oldjudge and numeric Meta IDs for judgededev.
+  // Set DOMJUDGE_PROBLEM_ID_FORMAT to "code" or "internal" only when a
+  // different DOMjudge installation requires an explicit override.
+  domjudgeProblemIdFormat: "auto",
   domjudgeTeamId: "",
   domjudgeUser: "",
   domjudgePass: "",
@@ -119,6 +123,7 @@ function getConfig() {
     DOMJUDGE_BASE_URL: "domjudgeApiUrl",
     DOMJUDGE_CONTEST_ID: "domjudgeContestId",
     DOMJUDGE_CONTEST_IDS: "domjudgeContestIds",
+    DOMJUDGE_PROBLEM_ID_FORMAT: "domjudgeProblemIdFormat",
     DOMJUDGE_TEAM_ID: "domjudgeTeamId",
     DOMJUDGE_USERNAME: "domjudgeUser",
     DOMJUDGE_PASSWORD: "domjudgePass",
