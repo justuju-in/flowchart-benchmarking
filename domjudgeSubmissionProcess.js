@@ -151,6 +151,8 @@ function getCopiedFormSubmissionKeys_(spreadsheet) {
   return rows.slice(1).reduce(function(keys, row) {
     var key = copiedFormSubmissionKey_(row[emailIndex], row[problemIndex], row[uploadIndex]);
     if (key) keys[key] = true;
+    var fileId = getFileIdFromUrl(String(row[uploadIndex] || ""));
+    if (fileId) keys["file:" + fileId] = true;
     return keys;
   }, {});
 }
@@ -221,7 +223,14 @@ function isCopiedFormSubmission_(sheet, data, rowIndex, copiedFormSubmissionKeys
   var problem = getSheetValueByColumnName(data, rowIndex, sheet, getConfig().ProblemNumberColumnName);
   var flowchartUrl = getSheetValueByColumnName(data, rowIndex, sheet, getConfig().UploadFlowchartColumnName);
   var key = copiedFormSubmissionKey_(email, problem, flowchartUrl);
-  return Boolean(key && copiedFormSubmissionKeys[key]);
+  var fileId = getFileIdFromUrl(String(flowchartUrl || ""));
+  // An uploaded Drive file is unique to a Form response. Accepting this
+  // secondary key survives harmless Form/Master label normalisation while
+  // still preventing unrelated historical Master rows from reaching a judge.
+  return Boolean(
+    (key && copiedFormSubmissionKeys[key]) ||
+    (fileId && copiedFormSubmissionKeys["file:" + fileId])
+  );
 }
 
 function copiedFormSubmissionKey_(email, problem, flowchartUrl) {
