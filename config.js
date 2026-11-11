@@ -129,7 +129,13 @@ function getConfig() {
     DOMJUDGE_PASSWORD: "domjudgePass",
     DOMJUDGE_ADMIN_USERNAME: "domjudgeAdminUser",
     DOMJUDGE_ADMIN_PASSWORD: "domjudgeAdminPass",
-    DOMJUDGE_LANGUAGE_ID: "domjudgeLanguageId"
+    DOMJUDGE_LANGUAGE_ID: "domjudgeLanguageId",
+    // Allows each copied Sheet/Form test environment to use its own live
+    // Google Forms response tab without changing the shared default.
+    SOURCE_RESPONSE_SHEET: "sourceResponseSheet",
+    // Keeps the historic Master tab intact while allowing an evaluation
+    // ledger tab to be selected per copied Apps Script project.
+    EVALUATION_SHEET: "masterSheet"
   };
 
   Object.keys(propertyMap).forEach(function(propertyName) {
