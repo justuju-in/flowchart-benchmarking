@@ -3,6 +3,8 @@ const FC_HEADERS = ['Run ID','Source row','Problem','Image snapshot','Image SHA2
 
 function onOpen() {
   SpreadsheetApp.getUi().createMenu('Model Comparison')
+    .addItem('Create fixed Set B', 'createBenchmarkSetB')
+    .addSeparator()
     .addItem('Run rows…', 'fcrShowDialog')
     .addItem('Open row results', 'fcrOpenResults')
     .addItem('Stop row comparison', 'fcrStop').addToUi();
