@@ -8,6 +8,15 @@ function onOpen() {
     .addItem('Run rows…', 'fcrShowDialog')
     .addItem('Open row results', 'fcrOpenResults')
     .addItem('Stop row comparison', 'fcrStop').addToUi();
+  SpreadsheetApp.getUi().createMenu('Benchmark Runner')
+    .addItem('Start benchmark run…', 'showBenchmarkRunDialog')
+    .addItem('Generate next item', 'generateOneBenchmarkItem')
+    .addItem('Submit next generated item', 'submitOneBenchmarkItem')
+    .addItem('Retry failed submission', 'retryOneBenchmarkSubmission')
+    .addItem('Poll next verdict', 'pollOneBenchmarkVerdict')
+    .addSeparator()
+    .addItem('Compare two runs…', 'promptBenchmarkRunComparison')
+    .addToUi();
 }
 
 function fcConfig() {
