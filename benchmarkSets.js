@@ -16,7 +16,8 @@ var BENCHMARK_SET_B = {
   name: "Set B - Vishal Flagged Submissions",
   description: "Fixed regression set of unique flowcharts previously flagged by Vishal.",
   sourceSpreadsheetId: "1VHFvbcIukZhSB9wmTMSFXuSpRu49ySVq63_SpUz_KUs",
-  sourceSheet: "flagged_runs_vishal"
+  sourceSheet: "flagged_runs_vishal",
+  referenceSheet: "FROM-JUN-1"
 };
 
 function benchmarkNormalizeProblemCode_(value) {
@@ -38,7 +39,33 @@ function benchmarkAppendUniqueText_(current, next) {
   return values.join("\n---\n");
 }
 
-function benchmarkBuildSetBItems_(values) {
+/**
+ * Builds a Drive-file-ID -> FCP-code map from the historical source sheet.
+ * Vishal's early rows use numeric f_id values, but their flowchart URLs occur
+ * in FROM-JUN-1 with the canonical FCP problem_id.
+ */
+function benchmarkProblemCodesByFile_(values) {
+  if (!values || values.length < 2) return {};
+  var headers = values[0].map(function (value) { return String(value).trim(); });
+  ["image_url", "problem_id"].forEach(function (name) {
+    if (headers.indexOf(name) < 0) throw new Error("Set B reference is missing column: " + name);
+  });
+  var imageColumn = headers.indexOf("image_url");
+  var problemColumn = headers.indexOf("problem_id");
+  var byFile = {};
+  values.slice(1).forEach(function (row) {
+    var fileId = benchmarkDriveFileId_(row[imageColumn]);
+    var problemCode = benchmarkNormalizeProblemCode_(String(row[problemColumn] || "").split(/\s+/)[0]);
+    if (!fileId || !problemCode) return;
+    if (byFile[fileId] && byFile[fileId] !== problemCode) {
+      throw new Error("Conflicting FCP mappings for flowchart file: " + fileId);
+    }
+    byFile[fileId] = problemCode;
+  });
+  return byFile;
+}
+
+function benchmarkBuildSetBItems_(values, problemCodesByFile) {
   if (!values || values.length < 2) return [];
   var headers = values[0].map(function (value) { return String(value).trim(); });
   var required = ["flowchart", "f_id", "issue_reported", "rca", "debugging_status", "debugging_comments"];
@@ -57,7 +84,8 @@ function benchmarkBuildSetBItems_(values) {
         flowchartUrl: url,
         flowchartFileId: fileId,
         sourceReference: String(read(row, "f_id") || "").trim(),
-        problemCode: benchmarkNormalizeProblemCode_(read(row, "f_id")),
+        problemCode: benchmarkNormalizeProblemCode_(read(row, "f_id")) ||
+          String((problemCodesByFile || {})[fileId] || ""),
         issueReported: "",
         rca: "",
         debuggingStatus: "",
@@ -95,8 +123,16 @@ function createBenchmarkSetB() {
   var source = SpreadsheetApp.openById(BENCHMARK_SET_B.sourceSpreadsheetId)
     .getSheetByName(BENCHMARK_SET_B.sourceSheet);
   if (!source) throw new Error("Set B source sheet not found: " + BENCHMARK_SET_B.sourceSheet);
-  var items = benchmarkBuildSetBItems_(source.getDataRange().getDisplayValues());
+  var reference = SpreadsheetApp.openById(BENCHMARK_SET_B.sourceSpreadsheetId)
+    .getSheetByName(BENCHMARK_SET_B.referenceSheet);
+  if (!reference) throw new Error("Set B reference sheet not found: " + BENCHMARK_SET_B.referenceSheet);
+  var problemCodesByFile = benchmarkProblemCodesByFile_(reference.getDataRange().getDisplayValues());
+  var items = benchmarkBuildSetBItems_(source.getDataRange().getDisplayValues(), problemCodesByFile);
   if (!items.length) throw new Error("No valid flagged flowcharts found for Set B.");
+  var unresolved = items.filter(function (item) { return !item.problemCode; });
+  if (unresolved.length) {
+    throw new Error("Set B has " + unresolved.length + " flowchart(s) without an FCP mapping; do not create the set.");
+  }
 
   var createdAt = new Date();
   var rows = items.map(function (item) {
