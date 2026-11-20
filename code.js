@@ -10,10 +10,10 @@ function onOpen() {
     .addItem('Stop row comparison', 'fcrStop').addToUi();
   SpreadsheetApp.getUi().createMenu('Benchmark Runner')
     .addItem('Start benchmark run…', 'showBenchmarkRunDialog')
-    .addItem('Generate next item', 'generateOneBenchmarkItem')
-    .addItem('Submit next generated item', 'submitOneBenchmarkItem')
+    .addItem('Generate next item for Run ID…', 'generateNextBenchmarkItemForRun')
+    .addItem('Submit next generated item for Run ID…', 'submitNextBenchmarkItemForRun')
     .addItem('Retry failed submission', 'retryOneBenchmarkSubmission')
-    .addItem('Poll next verdict', 'pollOneBenchmarkVerdict')
+    .addItem('Poll next verdict for Run ID…', 'pollNextBenchmarkVerdictForRun')
     .addSeparator()
     .addItem('Compare two runs…', 'promptBenchmarkRunComparison')
     .addToUi();

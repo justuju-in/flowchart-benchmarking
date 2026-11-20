@@ -396,7 +396,7 @@ function processOneBenchmarkItem() {
     throw error;
   }
 }
-function generateOneBenchmarkItem() {
+function generateOneBenchmarkItem(targetRunId) {
   const SPREADSHEET_ID = '1U-FahEyZvmMa5Y2uaLmoBUDL-q-Zqp14ss2fYqFwWU4';
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -412,14 +412,14 @@ function generateOneBenchmarkItem() {
 
   // Sirf pehla QUEUED item generate hoga.
   for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][9]).trim() === 'QUEUED') {
+    if (String(rows[i][9]).trim() === 'QUEUED' && (!targetRunId || String(rows[i][0]).trim() === String(targetRunId).trim())) {
       rowNumber = i + 1;
       break;
     }
   }
 
   if (rowNumber === -1) {
-    throw new Error('No QUEUED benchmark item found.');
+    throw new Error(targetRunId ? `No QUEUED benchmark item found for ${targetRunId}.` : 'No QUEUED benchmark item found.');
   }
 
   const item = rows[rowNumber - 1];
@@ -494,7 +494,7 @@ function generateOneBenchmarkItem() {
     throw error;
   }
 }
-function submitOneBenchmarkItem() {
+function submitOneBenchmarkItem(targetRunId) {
   const SPREADSHEET_ID = '1U-FahEyZvmMa5Y2uaLmoBUDL-q-Zqp14ss2fYqFwWU4';
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -503,14 +503,14 @@ function submitOneBenchmarkItem() {
   let rowNumber = -1;
 
   for (let i = 1; i < rows.length; i++) {
-    if (String(rows[i][9]).trim() === 'GENERATED') {
+    if (String(rows[i][9]).trim() === 'GENERATED' && (!targetRunId || String(rows[i][0]).trim() === String(targetRunId).trim())) {
       rowNumber = i + 1;
       break;
     }
   }
 
   if (rowNumber === -1) {
-    throw new Error('No GENERATED item found.');
+    throw new Error(targetRunId ? `No GENERATED item found for ${targetRunId}.` : 'No GENERATED item found.');
   }
 
   const item = rows[rowNumber - 1];
@@ -553,7 +553,7 @@ function submitOneBenchmarkItem() {
  * It deliberately uses the central polling helper, so benchmark and normal
  * flowchart evaluation call DOMjudge in the same way.
  */
-function pollOneBenchmarkVerdict() {
+function pollOneBenchmarkVerdict(targetRunId) {
   const SPREADSHEET_ID = '1U-FahEyZvmMa5Y2uaLmoBUDL-q-Zqp14ss2fYqFwWU4';
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const resultsSheet = ss.getSheetByName('BenchmarkResults');
@@ -562,6 +562,7 @@ function pollOneBenchmarkVerdict() {
   for (let i = 1; i < rows.length; i++) {
     const item = rows[i];
     if (String(item[9]).trim() !== 'JUDGE_SUBMITTED') continue;
+    if (targetRunId && String(item[0]).trim() !== String(targetRunId).trim()) continue;
 
     const rowNumber = i + 1;
     const problemCode = String(item[3]).split(' ')[0].trim();
@@ -582,7 +583,31 @@ function pollOneBenchmarkVerdict() {
     return `${problemCode} (${submissionId}) verdict: ${verdict}`;
   }
 
-  throw new Error('No JUDGE_SUBMITTED benchmark item found.');
+  throw new Error(targetRunId ? `No JUDGE_SUBMITTED benchmark item found for ${targetRunId}.` : 'No JUDGE_SUBMITTED benchmark item found.');
+}
+
+function promptBenchmarkRunId_(action) {
+  const ui = SpreadsheetApp.getUi();
+  const prompt = ui.prompt('Benchmark Runner', `Enter the Run ID to ${action}, for example RUN-002:`, ui.ButtonSet.OK_CANCEL);
+  if (prompt.getSelectedButton() !== ui.Button.OK) return '';
+  const runId = String(prompt.getResponseText() || '').trim();
+  if (!/^RUN-\d+$/.test(runId)) throw new Error('Enter a valid Run ID, for example RUN-002.');
+  return runId;
+}
+
+function generateNextBenchmarkItemForRun() {
+  const runId = promptBenchmarkRunId_('generate the next item');
+  return runId ? generateOneBenchmarkItem(runId) : '';
+}
+
+function submitNextBenchmarkItemForRun() {
+  const runId = promptBenchmarkRunId_('submit the next generated item');
+  return runId ? submitOneBenchmarkItem(runId) : '';
+}
+
+function pollNextBenchmarkVerdictForRun() {
+  const runId = promptBenchmarkRunId_('poll the next verdict');
+  return runId ? pollOneBenchmarkVerdict(runId) : '';
 }
 
 /** Retries the first failed submission that already has generated code. */
