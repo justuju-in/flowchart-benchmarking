@@ -7,17 +7,21 @@ function createBenchmarkRun() {
 }
 
 /** Creates a run from explicitly selected benchmark settings. */
-function createConfiguredBenchmarkRun(setName, model, reasoningLevel) {
+function createConfiguredBenchmarkRun(setName, model, reasoningLevel, sampleSize) {
   const SPREADSHEET_ID = '1U-FahEyZvmMa5Y2uaLmoBUDL-q-Zqp14ss2fYqFwWU4';
   const SET_NAME = String(setName || '').trim();
   const MODEL = String(model || '').trim();
   const REASONING_LEVEL = String(reasoningLevel || '').trim();
+  const SAMPLE_SIZE = sampleSize == null || sampleSize === '' ? 5 : Number(sampleSize);
 
   if (!/^BenchmarkSet[AB]$/.test(SET_NAME)) {
     throw new Error('Choose BenchmarkSetA or BenchmarkSetB.');
   }
   if (!MODEL || !REASONING_LEVEL) {
     throw new Error('Model and reasoning level are required.');
+  }
+  if (!Number.isInteger(SAMPLE_SIZE) || SAMPLE_SIZE < 1 || SAMPLE_SIZE > 10) {
+    throw new Error('For the pilot, choose between 1 and 10 items.');
   }
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -37,6 +41,12 @@ function createConfiguredBenchmarkRun(setName, model, reasoningLevel) {
   if (itemCount === 0) {
     throw new Error(`${SET_NAME} has no items.`);
   }
+  if (SAMPLE_SIZE > itemCount) throw new Error('Sample size exceeds available set items.');
+  const sampleHeader = runsSheet.getRange(1, 8).getValue();
+  if (sampleHeader && sampleHeader !== 'Sample Size') {
+    throw new Error('BenchmarkRuns column H is already in use; cannot save sample size safely.');
+  }
+  if (!sampleHeader) runsSheet.getRange(1, 8).setValue('Sample Size');
 
   const existingRuns = runsSheet
     .getDataRange()
@@ -58,11 +68,12 @@ function createConfiguredBenchmarkRun(setName, model, reasoningLevel) {
     REASONING_LEVEL,
     'NEW',
     new Date(),
-    ''
+    '',
+    SAMPLE_SIZE
   ]);
 
   ensureBenchmarkResultsCostColumn_(ss);
-  return `${runId} created for ${itemCount} ${SET_NAME} items.`;
+  return `${runId} created for the first ${SAMPLE_SIZE} ${SET_NAME} items.`;
 }
 
 /** Opens a small dialog so a user can select a set, model and reasoning level. */
@@ -73,8 +84,9 @@ function showBenchmarkRunDialog() {
     <label>Benchmark set<select id="set"><option>BenchmarkSetA</option><option>BenchmarkSetB</option></select></label>
     <label>Gemini model<input id="model" value="gemini-3.1-pro-preview"></label>
     <label>Reasoning level<select id="reasoning"><option>low</option><option selected>medium</option><option>high</option></select></label>
+    <label>Sample size<input id="sample" type="number" min="1" max="10" value="5"></label>
     <button onclick="start()">Create run</button><p id="message"></p>
-    <script>function start(){const b=document.querySelector('button');b.disabled=true;google.script.run.withSuccessHandler(r=>{document.getElementById('message').textContent=r;b.disabled=false;}).withFailureHandler(e=>{document.getElementById('message').textContent=e.message;b.disabled=false;}).createConfiguredBenchmarkRun(document.getElementById('set').value,document.getElementById('model').value,document.getElementById('reasoning').value);}</script>`)
+    <script>function start(){const b=document.querySelector('button');b.disabled=true;google.script.run.withSuccessHandler(r=>{document.getElementById('message').textContent=r;b.disabled=false;}).withFailureHandler(e=>{document.getElementById('message').textContent=e.message;b.disabled=false;}).createConfiguredBenchmarkRun(document.getElementById('set').value,document.getElementById('model').value,document.getElementById('reasoning').value,document.getElementById('sample').value);}</script>`)
     .setWidth(360).setHeight(340);
   SpreadsheetApp.getUi().showModalDialog(html, 'Start benchmark run');
 }
@@ -155,7 +167,11 @@ function queueBenchmarkRun() {
     throw new Error(`${setName} has no benchmark items.`);
   }
 
-  const items = setValues.slice(1);
+  const requestedSize = run[7] === '' || run[7] == null ? setValues.length - 1 : Number(run[7]);
+  if (!Number.isInteger(requestedSize) || requestedSize < 1 || requestedSize > setValues.length - 1) {
+    throw new Error('Invalid or unavailable sample size for this run.');
+  }
+  const items = setValues.slice(1, requestedSize + 1);
 
   const queuedRows = items.map((item, index) => [
     runId,               // Run ID
@@ -633,6 +649,11 @@ function buildBenchmarkRunComparisonReport(runA, runB) {
     throw new Error('Both Run IDs must have rows in BenchmarkResults.');
   }
 
+  const setsA = [...new Set(Object.values(byRun[firstRun]).map(row => String(row[1])))];
+  const setsB = [...new Set(Object.values(byRun[secondRun]).map(row => String(row[1])))];
+  if (setsA.length !== 1 || setsB.length !== 1 || setsA[0] !== setsB[0]) {
+    throw new Error('Both runs must use the same benchmark set.');
+  }
   const keys = [...new Set([...Object.keys(byRun[firstRun]), ...Object.keys(byRun[secondRun])])].sort();
   const rows = [[
     'Run A', 'Run B', 'Item Row', 'Problem ID', 'Verdict A', 'Verdict B', 'Comparison'
@@ -649,9 +670,9 @@ function buildBenchmarkRunComparisonReport(runA, runB) {
     rows.push([firstRun, secondRun, a[2] || b[2] || '', a[3] || b[3] || '', verdictA, verdictB, comparison]);
   });
 
-  const reportName = 'BenchmarkRunComparison';
-  const report = ss.getSheetByName(reportName) || ss.insertSheet(reportName);
-  report.clearContents();
+  const reportName = `BenchmarkComparison_${firstRun}_${secondRun}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+  if (ss.getSheetByName(reportName)) throw new Error('This comparison report already exists; existing report was not changed.');
+  const report = ss.insertSheet(reportName);
   report.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
   report.setFrozenRows(1);
   return `${reportName} created for ${firstRun} and ${secondRun}.`;
