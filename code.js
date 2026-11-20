@@ -10,6 +10,7 @@ function onOpen() {
     .addItem('Stop row comparison', 'fcrStop').addToUi();
   SpreadsheetApp.getUi().createMenu('Benchmark Runner')
     .addItem('Start benchmark run…', 'showBenchmarkRunDialog')
+    .addItem('Queue latest new run', 'queueBenchmarkRun')
     .addItem('Generate next item for Run ID…', 'generateNextBenchmarkItemForRun')
     .addItem('Submit next generated item for Run ID…', 'submitNextBenchmarkItemForRun')
     .addItem('Retry failed submission', 'retryOneBenchmarkSubmission')
