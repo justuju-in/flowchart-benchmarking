@@ -212,7 +212,12 @@ function fcJudge(p,settings,path,method,payload) {
   const response=UrlFetchApp.fetch(base+'/contests/'+encodeURIComponent(settings.contest)+path,{
     method,headers:{Authorization:'Basic '+Utilities.base64Encode(p.DOMJUDGE_USERNAME+':'+p.DOMJUDGE_PASSWORD)},contentType:'application/json',muteHttpExceptions:true,...(payload ? {payload:JSON.stringify(payload)} : {})
   });
-  if (response.getResponseCode()<200 || response.getResponseCode()>=300) throw new Error('DOMjudge HTTP '+response.getResponseCode());
+  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) {
+    throw new Error(
+      'DOMjudge HTTP ' + response.getResponseCode() + ': ' +
+      response.getContentText()
+    );
+  }
   return JSON.parse(response.getContentText());
 }
 
